@@ -13,8 +13,8 @@
     let filteredCurrencies = {}
 
     // Get country code 
-    const getCountryCode = (currencyCode) => {
-        const country = currencyFlags.find(currency => currency.code === currencyCode);
+    const getCountryCode = (currencyCode) => { 
+        const country = currencyFlags.find(currency => currency.code === currencyCode.toUpperCase());
         return country ? country.countryCode : null;
     }
 
@@ -31,16 +31,13 @@
             {#if currencyCode && currencyName}
                 <button class="currency__item flex align__center" onclick={() => handleCurrencyChange({curName: currencyName, curCode: currencyCode})}>
                     <div class="currency flex align__center">
-                        {#if getCountryCode(currencyCode) && !unavailableFlags.includes(currencyCode)}
-                        <img src={`https://flagcdn.com/w40/${getCountryCode(currencyCode).toLowerCase()}.png`} alt={`${currencyCode} flag`}>
+                        {#if getCountryCode(currencyCode) && !unavailableFlags.includes(currencyCode.toUpperCase())}
+                            <img src={`https://flagcdn.com/w40/${getCountryCode(currencyCode).toLowerCase()}.png`} alt={`${currencyCode} flag`}>
                         {/if}
                         <span>{currencyCode}</span>
                     </div>
                     <span class="country">{currencyName}</span>
                 </button>
-            {/if}
-            {#if !currencyCode || !currencyName}
-                <div class="currency__item">No option</div>
             {/if}
         {/each}
     {/if}

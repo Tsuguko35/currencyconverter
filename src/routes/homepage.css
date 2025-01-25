@@ -13,10 +13,27 @@
 	padding: 2rem;
 }
 
-.content__container > .converter__chart__card {
-	flex: 1;
-	min-height: 10rem;
-	background-color: var(--background-color-2);
+.content__container > .converter__card > .date__input {
+	padding-bottom: 2rem;
+	max-width: 10rem;
+	gap: 0.5rem;
+}
+
+.content__container > .converter__card > .date__input > .converter__date {
+	padding: 1rem 0.8rem;
+	background-color: var(--background-color-1);
+	border: 1px solid var(--background-color-3);
+	border-radius: 5px;
+}
+
+.content__container
+	> .converter__card
+	> .date__input
+	> .converter__date::-webkit-calendar-picker-indicator {
+	filter: invert(100%);
+	width: 1rem;
+	height: 1rem;
+	cursor: pointer;
 }
 
 .content__container > .converter__card > .currency__inputs {
@@ -94,6 +111,7 @@
 
 .content__container > .converter__card > .currency__inputs .currency > span {
 	font-weight: 600;
+	text-transform: uppercase;
 }
 
 .content__container > .converter__card > .currency__inputs .currency > img {
@@ -105,6 +123,7 @@
 .content__container > .converter__card > .currency__inputs .currency__type__input > svg {
 	min-width: 1.5rem;
 	min-height: 1.5rem;
+	position: relative;
 }
 
 .content__container > .converter__card > .currency__inputs .currency__type__input > svg * {
@@ -113,14 +132,16 @@
 
 .content__container > .converter__card > .currency__inputs .currency__type__input > input {
 	padding-left: 6rem;
+	padding-right: 3rem;
 	top: 0;
 	left: 0;
 	outline: none;
 	border: none;
 	border-radius: inherit;
 	background-color: transparent;
-	width: calc(100% - 3rem);
+	width: calc(100%);
 	font-size: 0.8rem;
+	z-index: 1;
 }
 
 .content__container
@@ -193,6 +214,75 @@
 	font-size: 0.75rem;
 }
 
+/* COnverter Rates Card  */
+.content__container > .converter__rates__card {
+	flex: 1;
+	min-height: 10rem;
+	background-color: var(--background-color-2);
+	padding: 2rem;
+	gap: 1rem;
+}
+
+.content__container > .converter__rates__card > .card__label {
+	font-size: 0.75rem;
+	color: var(--text-color-4);
+	font-weight: 400;
+}
+
+.content__container > .converter__rates__card > .rates_list {
+	gap: 0.8rem;
+}
+
+.content__container
+	> .converter__rates__card
+	> .rates_list
+	> .rate_item:first-child
+	.currencies
+	> span {
+	color: var(--text-color-1);
+}
+
+.content__container
+	> .converter__rates__card
+	> .rates_list
+	> .rate_item:first-child
+	.currencies
+	> span,
+.content__container > .converter__rates__card > .rates_list > .rate_item:first-child .rate {
+	font-size: 1.2rem;
+}
+
+.content__container > .converter__rates__card > .rates_list .currencies {
+	gap: 0.3rem;
+}
+
+.content__container > .converter__rates__card > .rates_list .currencies > span {
+	text-transform: uppercase;
+	font-weight: 600;
+	font-size: 0.75rem;
+	color: var(--text-color-2);
+}
+
+.content__container > .converter__rates__card > .rates_list .currencies > svg {
+	min-width: 0.8rem;
+	min-height: 0.8rem;
+}
+
+.content__container
+	> .converter__rates__card
+	> .rates_list
+	.rate_item:not(:first-child)
+	.currencies
+	> svg
+	* {
+	color: var(--text-color-2);
+}
+
+.content__container > .converter__rates__card > .rates_list .rate {
+	font-size: 0.75rem;
+	color: var(--text-color-4);
+}
+
 /* Converter Inputs  */
 @media only screen and (max-width: 1023px) {
 	.content__container {
@@ -220,7 +310,8 @@
 }
 
 @media only screen and (max-width: 425px) {
-	.content__container > .converter__card {
+	.content__container > .converter__card,
+	.content__container > .converter__rates__card {
 		padding: 1rem;
 	}
 }
