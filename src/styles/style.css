@@ -188,6 +188,19 @@ body {
 	color: var(--text-color-4);
 }
 
+.loading__skeleton {
+	animation: skeleton-loading 1s linear infinite alternate;
+}
+
+@keyframes skeleton-loading {
+	0% {
+		background-color: var(--background-color-1);
+	}
+	100% {
+		background-color: var(--background-color-3);
+	}
+}
+
 @media only screen and (max-width: 375px) {
 	.container {
 		padding-inline: 0.5rem;

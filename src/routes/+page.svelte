@@ -24,12 +24,16 @@
             currencyName: 'Philippine Peso',
             currencyCode: 'php'
         },
+        
+    })
+    const currencyAmmounts = writable({
         fromAmmount: '',
         toAmmount: ''
     })
     const fromCurrencyRate = writable({})
     const ammountFocused = writable('');
     const exchangeDay = writable(new Date().toISOString().split('T')[0])
+    const isLoading = writable(true)
 
     // Variables 
     let currencyFilter = ''
@@ -39,24 +43,39 @@
     let isMounted = false
     const unavailableFlags = ['ANG', 'MOP'];
     
-    // Reactive statement 
+    // Run if currency type is updated
     $: if(isMounted){
         const { fromCurrency } = $currencyInputs;
+        isLoading.set(true)
         fetchExchangeRates(fromCurrency.currencyCode, $exchangeDay).then((data) => {
             fromCurrencyRate.set(data[fromCurrency.currencyCode])
+            isLoading.set(false)
         });
     }
 
     onMount(() => {
         isMounted = true;
         const { fromCurrency } = $currencyInputs;
-        fetchExchangeRates(fromCurrency.currencyCode);
+        isLoading.set(true)
+        fetchExchangeRates(fromCurrency.currencyCode).then(() => {
+            isLoading.set(false)
+        });
     });
+
+    // Clear Ammounts if date is changed
+    $: {
+        exchangeDay.subscribe(() => {
+            currencyAmmounts.set({
+                fromAmmount: '',
+                toAmmount: ''
+            })
+        })
+    }
 
     // Handle blur and format the value
     function handleAmmountBlur(field) {
         ammountFocused.set('')
-        currencyInputs.update((inputs) => {
+        currencyAmmounts.update((inputs) => {
             inputs[field] = handleAmmountFormat('blur', inputs[field]);
             return inputs;
         });
@@ -65,7 +84,7 @@
     // Handle focus to remove commas
     function handleAmmountFocus(field) {
         ammountFocused.set(field)
-        currencyInputs.update((inputs) => {
+        currencyAmmounts.update((inputs) => {
             inputs[field] = handleAmmountFormat('focus', inputs[field]);
             return inputs;
         });
@@ -77,15 +96,20 @@
     const swapCurrencies = () => {
         currencyInputs.update(current => {
             const tempFromCurrency = current.fromCurrency;
-            const tempFromAmmount = current.fromAmmount
             current.fromCurrency = current.toCurrency;
             current.toCurrency = tempFromCurrency;
-            current.fromAmmount = current.toAmmount;
-            current.toAmmount = tempFromAmmount
             return current;
         });
+        currencyAmmounts.update(current => {
+            const tempFromAmmount = current.fromAmmount
+            current.fromAmmount = current.toAmmount;
+            current.toAmmount = tempFromAmmount
+            return current
+        })
+     
     }
 
+     
     const getExchangeRate = (code) => {
         const entry = Object.entries($fromCurrencyRate).find(
             ([key, value]) => key.toLowerCase() === code.toLowerCase()
@@ -94,30 +118,34 @@
         return entry ? entry[1] : null; 
     };
 
+    //handle user input on currency ammount
     const handleCurrencyConvert = (ammount, action) => {
         if(isNaN(ammount) || ammount === '') {
+            if(ammount === ''){
+                currencyAmmounts.set({
+                    fromAmmount: '',
+                    toAmmount:''
+                })
+            }
             return;
         }
         else{
             const { fromCurrency, toCurrency } = $currencyInputs
-            console.log(convertCurrency(parseFloat(ammount), getExchangeRate(toCurrency.currencyCode), action));
-
             if(action === 'from'){
-
-                currencyInputs.update((state) => ({
+                currencyAmmounts.update((state) => ({
                     ...state,
                     fromAmmount: ammount,
                     toAmmount: convertCurrency(parseFloat(ammount), getExchangeRate(toCurrency.currencyCode), action)
                 }))
+             
             }
             else if(action === 'to'){
-                currencyInputs.update((state) => ({
+                currencyAmmounts.update((state) => ({
                     ...state,
                     fromAmmount: convertCurrency(parseFloat(ammount), getExchangeRate(toCurrency.currencyCode), action),
                     toAmmount: ammount
                 }))
             }
-            console.log($currencyInputs.toAmmount);
         }        
     }
 
@@ -143,7 +171,7 @@
             inputFocused.set('');
         }
 
-        currencyInputs.update((currentState) => ({
+        currencyAmmounts.update((currentState) => ({
             ...currentState,
             toAmmount: '',
             fromAmmount: ''
@@ -198,119 +226,122 @@
     <!-- Page Content  -->
     <div class="content__container flex">
         <!-- Converter  -->
-        <div class="converter__card max__w shadow__bottom border__card__radius">
-            <!-- Date for exchange rate  -->
-            <div class="date__input flex flex__column">
-                <span class="label">Date</span>
-                <input class="converter__date" type="date" value={$exchangeDay} oninput={(e) => exchangeDay.set(e.target.value)}>
-            </div>
+        <div class={`converter__card max__w shadow__bottom border__card__radius ${$isLoading ? 'loading__skeleton' : ''}`}>
+            {#if !$isLoading}
+                <!-- Date for exchange rate  -->
+                <div class="date__input flex flex__column">
+                    <span class="label">Date</span>
+                    <input class="converter__date" type="date" value={$exchangeDay} oninput={(e) => exchangeDay.set(e.target.value)}>
+                </div>
+
+
+                <div class="currency__inputs align__center flex max__w justify__center">
+
+                    <!-- First Currency  -->
+                    <div class="currency__in__out max__w flex flex__column">
+                        <!-- label  -->
+                        <span class="label">From {$currencyInputs.fromCurrency.currencyName}</span>
+                        <div class="currency__type__input flex align__center space__between p__relative max__w">
+                            <!-- Flag and Currency Name  -->
+                            <div class="currency flex align__center">
+                                {#if getCountryCode($currencyInputs.fromCurrency.currencyCode) && !unavailableFlags.includes($currencyInputs.fromCurrency.currencyCode.toUpperCase())}
+                                    <img src={`https://flagcdn.com/w40/${getCountryCode($currencyInputs.fromCurrency.currencyCode)}.png`} alt="currency flag">
+                                {/if}
+                                <span>{$currencyInputs.fromCurrency.currencyCode}</span>
+                            </div>
+
+                            <!-- Currency Name Input  -->
+                            <input 
+                                class="p__absolute max__h max__w" 
+                                type="text" 
+                                name="fromCurrency" 
+                                onfocus={() => changeFocus('from')}
+                                onblur={() => changeFocus('')}
+                                value={$inputFocused === 'from' ? currencyFilter : $currencyInputs.fromCurrency.currencyName} 
+                                oninput={handleInputChange} 
+                                autocomplete={false}
+                            />
+                            <IconTablerArrowDown />
+
+                            <!-- Countries List  -->
+                            <CountriesList currencyFilter={currencyFilter} countryCurrencies={$initialState.currencies} handleCurrencyChange={handleCurrencyChange} isFocused={isFocused} focusedInput={delayedInputFocus} listFor={'from'}/>
+                        </div>
+
+                        <!-- Currency Ammount Input  -->
+                        <input 
+                            class="currency__ammount" 
+                            name="fromAmmount" 
+                            placeholder="0"
+                            type={$ammountFocused === 'fromAmmount' ? "number" : "text"}
+                            inputmode="numeric"
+                            onfocus={() => handleAmmountFocus('fromAmmount')}
+                            onblur={() => handleAmmountBlur('fromAmmount')}
+                            value={$currencyAmmounts.fromAmmount} 
+                            oninput={(e) => handleCurrencyConvert(e.target.value, 'from')} 
+                        >
+                    </div>
+
+                    <!-- Exchange button  -->
+                    <button class="swap__button" title="Swap Currencies" onclick={() => swapCurrencies()}>
+                        <IconTablerArrowsExchange/>
+                    </button>
+                    
+
+                    <!-- Second Currency  -->
+                    <div class="currency__in__out max__w flex flex__column">
+                        <!-- label  -->
+                        <span class="label">To {$currencyInputs.toCurrency.currencyName}</span>
+                        <div class="currency__type__input flex align__center space__between p__relative max__w">
+                            <!-- Flag and Currency Name  -->
+                            <div class="currency flex align__center">
+                                {#if getCountryCode($currencyInputs.toCurrency.currencyCode) && !unavailableFlags.includes($currencyInputs.toCurrency.currencyCode.toUpperCase())}
+                                    <img src={`https://flagcdn.com/w40/${getCountryCode($currencyInputs.toCurrency.currencyCode)}.png`} alt="currency flag">
+                                {/if}
+                                <span>{$currencyInputs.toCurrency.currencyCode}</span>
+                            </div>
+
+                            <!-- Currency Name Input  -->
+                            <input 
+                                class="p__absolute max__h max__w" 
+                                type="text" 
+                                name="toCurrency" 
+                                onfocus={() => changeFocus('to')}
+                                onblur={() => changeFocus('')}
+                                value={$inputFocused === 'to' ? currencyFilter : $currencyInputs.toCurrency.currencyName} 
+                                oninput={handleInputChange} 
+                                autocomplete={false}
+                            />
+                            <IconTablerArrowDown />
+
+                            <!-- Countries List  -->
+                            <CountriesList currencyFilter={currencyFilter} countryCurrencies={$initialState.currencies} handleCurrencyChange={handleCurrencyChange} isFocused={isFocused} focusedInput={delayedInputFocus} listFor={'to'}/>
+                        </div>
+
+                        <!-- Currency Ammount Input  -->
+                        <input 
+                            class="currency__ammount" 
+                            name="toAmmount" 
+                            placeholder="0"
+                            type="text"
+                            inputmode="numeric"
+                            onfocus={() => handleAmmountFocus('toAmmount')}
+                            onblur={() => handleAmmountBlur('toAmmount')}
+                            value={$currencyAmmounts.toAmmount} 
+                            oninput={(e) => handleCurrencyConvert(e.target.value, 'to')} 
+                        >
+                    </div>
+
+                    <!-- Exchange button  -->
+                    <button class="swap__button justify__end align__center mobile" title="Swap Currencies" onclick={() => swapCurrencies()}>
+                        Swap <IconTablerArrowsExchange/>
+                    </button>
+                </div>
+            {/if}
             
-
-            <div class="currency__inputs align__center flex max__w justify__center">
-
-                <!-- First Currency  -->
-                 <div class="currency__in__out max__w flex flex__column">
-                    <!-- label  -->
-                    <span class="label">From {$currencyInputs.fromCurrency.currencyName}</span>
-                    <div class="currency__type__input flex align__center space__between p__relative max__w">
-                        <!-- Flag and Currency Name  -->
-                        <div class="currency flex align__center">
-                            {#if getCountryCode($currencyInputs.fromCurrency.currencyCode) && !unavailableFlags.includes($currencyInputs.fromCurrency.currencyCode.toUpperCase())}
-                                <img src={`https://flagcdn.com/w40/${getCountryCode($currencyInputs.fromCurrency.currencyCode)}.png`} alt="currency flag">
-                            {/if}
-                            <span>{$currencyInputs.fromCurrency.currencyCode}</span>
-                        </div>
-
-                        <!-- Currency Name Input  -->
-                        <input 
-                            class="p__absolute max__h max__w" 
-                            type="text" 
-                            name="fromCurrency" 
-                            onfocus={() => changeFocus('from')}
-                            onblur={() => changeFocus('')}
-                            value={$inputFocused === 'from' ? currencyFilter : $currencyInputs.fromCurrency.currencyName} 
-                            oninput={handleInputChange} 
-                            autocomplete={false}
-                        />
-                        <IconTablerArrowDown />
-
-                        <!-- Countries List  -->
-                        <CountriesList currencyFilter={currencyFilter} countryCurrencies={$initialState.currencies} handleCurrencyChange={handleCurrencyChange} isFocused={isFocused} focusedInput={delayedInputFocus} listFor={'from'}/>
-                     </div>
-
-                     <!-- Currency Ammount Input  -->
-                     <input 
-                        class="currency__ammount" 
-                        name="fromAmmount" 
-                        placeholder="0"
-                        type={$ammountFocused === 'fromAmmount' ? "number" : "text"}
-                        inputmode="numeric"
-                        onfocus={() => handleAmmountFocus('fromAmmount')}
-                        onblur={() => handleAmmountBlur('fromAmmount')}
-                        value={$currencyInputs.fromAmmount} 
-                        oninput={(e) => handleCurrencyConvert(e.target.value, 'from')} 
-                     >
-                 </div>
-
-                <!-- Exchange button  -->
-                 <button class="swap__button" title="Swap Currencies" onclick={() => swapCurrencies()}>
-                    <IconTablerArrowsExchange/>
-                 </button>
-                
-
-                <!-- Second Currency  -->
-                <div class="currency__in__out max__w flex flex__column">
-                    <!-- label  -->
-                    <span class="label">To {$currencyInputs.toCurrency.currencyName}</span>
-                    <div class="currency__type__input flex align__center space__between p__relative max__w">
-                        <!-- Flag and Currency Name  -->
-                        <div class="currency flex align__center">
-                            {#if getCountryCode($currencyInputs.toCurrency.currencyCode) && !unavailableFlags.includes($currencyInputs.toCurrency.currencyCode.toUpperCase())}
-                                <img src={`https://flagcdn.com/w40/${getCountryCode($currencyInputs.toCurrency.currencyCode)}.png`} alt="currency flag">
-                            {/if}
-                            <span>{$currencyInputs.toCurrency.currencyCode}</span>
-                        </div>
-
-                         <!-- Currency Name Input  -->
-                        <input 
-                            class="p__absolute max__h max__w" 
-                            type="text" 
-                            name="toCurrency" 
-                            onfocus={() => changeFocus('to')}
-                            onblur={() => changeFocus('')}
-                            value={$inputFocused === 'to' ? currencyFilter : $currencyInputs.toCurrency.currencyName} 
-                            oninput={handleInputChange} 
-                            autocomplete={false}
-                        />
-                        <IconTablerArrowDown />
-
-                        <!-- Countries List  -->
-                        <CountriesList currencyFilter={currencyFilter} countryCurrencies={$initialState.currencies} handleCurrencyChange={handleCurrencyChange} isFocused={isFocused} focusedInput={delayedInputFocus} listFor={'to'}/>
-                     </div>
-
-                     <!-- Currency Ammount Input  -->
-                     <input 
-                        class="currency__ammount" 
-                        name="toAmmount" 
-                        placeholder="0"
-                        type="text"
-                        inputmode="numeric"
-                        onfocus={() => handleAmmountFocus('toAmmount')}
-                        onblur={() => handleAmmountBlur('toAmmount')}
-                        value={$currencyInputs.toAmmount} 
-                        oninput={(e) => handleCurrencyConvert(e.target.value, 'to')} 
-                     >
-                 </div>
-
-                 <!-- Exchange button  -->
-                 <button class="swap__button justify__end align__center mobile" title="Swap Currencies" onclick={() => swapCurrencies()}>
-                    Swap <IconTablerArrowsExchange/>
-                 </button>
-            </div>
         </div>
 
         <!-- Charts  -->
-        <ExchangeRates exchangeRates={$fromCurrencyRate} fromCurrency={$currencyInputs.fromCurrency.currencyCode} toCurrency={$currencyInputs.toCurrency.currencyCode} exchangeDate={$exchangeDay}/>
+        <ExchangeRates exchangeRates={$fromCurrencyRate} fromCurrency={$currencyInputs.fromCurrency.currencyCode} toCurrency={$currencyInputs.toCurrency.currencyCode} exchangeDate={$exchangeDay} isLoading={$isLoading}/>
     </div>
     
 </div>

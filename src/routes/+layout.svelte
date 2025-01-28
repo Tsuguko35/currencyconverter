@@ -4,6 +4,7 @@
     import { initialState } from '../stores/store';
 	import { fetchCurrencies } from '../utils/fetchCurrencies';
 
+    //fetch all currencies available
     onMount(async () => {
         const countries = await fetchCurrencies()
 
@@ -13,8 +14,6 @@
         }))
     })
 </script>
-
-<!-- Navbar  -->
 
 <!-- Content  -->
 <slot />
