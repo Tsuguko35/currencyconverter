@@ -201,6 +201,12 @@ body {
 	}
 }
 
+@media only screen and (max-width: 768px) {
+	.container {
+		padding-block: 2rem;
+	}
+}
+
 @media only screen and (max-width: 375px) {
 	.container {
 		padding-inline: 0.5rem;
