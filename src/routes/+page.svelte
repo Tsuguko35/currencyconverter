@@ -6,12 +6,14 @@
     import { writable } from 'svelte/store';
     import { initialState } from '../stores/store';
     import { currencyFlags } from '../utils/currencyFlags';
+    import { getCountryCode } from '../utils/getCountryCode';
 	import { fetchExchangeRates } from '../utils/fetchExchangeRates';
 	import { onMount } from 'svelte';
 	import { convertCurrency } from '../utils/convertCurrency';
 	import { handleAmmountFormat } from '../utils/handleAmmountFormat';
 	import PageTitle from '../components/PageTitle.svelte';
 	import ExchangeRates from '../components/ExchangeRates.svelte';
+	import { getExchangeRate } from '../utils/getExchangeRate';
 
     // Writables 
     const inputFocused = writable('');
@@ -32,16 +34,14 @@
     })
     const fromCurrencyRate = writable({})
     const ammountFocused = writable('');
-    const exchangeDay = writable(new Date().toISOString().split('T')[0])
+    const exchangeDay = writable($initialState.current_date)
     const isLoading = writable(true)
 
     // Variables 
     let currencyFilter = ''
     let delayedInputFocus = ''
-    
     let isFocused = false
     let isMounted = false
-    const unavailableFlags = ['ANG', 'MOP'];
     
     // Run if currency type is updated
     $: if(isMounted){
@@ -62,13 +62,17 @@
         });
     });
 
+    const clearAmmountData = () => {
+        currencyAmmounts.set({
+            fromAmmount: '',
+            toAmmount: ''
+        })
+    }
+
     // Clear Ammounts if date is changed
     $: {
         exchangeDay.subscribe(() => {
-            currencyAmmounts.set({
-                fromAmmount: '',
-                toAmmount: ''
-            })
+            clearAmmountData()
         })
     }
 
@@ -90,8 +94,6 @@
         });
     }
 
-    
-
     // Swap Currencies 
     const swapCurrencies = () => {
         currencyInputs.update(current => {
@@ -109,23 +111,11 @@
      
     }
 
-     
-    const getExchangeRate = (code) => {
-        const entry = Object.entries($fromCurrencyRate).find(
-            ([key, value]) => key.toLowerCase() === code.toLowerCase()
-        );
-
-        return entry ? entry[1] : null; 
-    };
-
     //handle user input on currency ammount
     const handleCurrencyConvert = (ammount, action) => {
         if(isNaN(ammount) || ammount === '') {
             if(ammount === ''){
-                currencyAmmounts.set({
-                    fromAmmount: '',
-                    toAmmount:''
-                })
+                clearAmmountData()
             }
             return;
         }
@@ -135,14 +125,14 @@
                 currencyAmmounts.update((state) => ({
                     ...state,
                     fromAmmount: ammount,
-                    toAmmount: convertCurrency(parseFloat(ammount), getExchangeRate(toCurrency.currencyCode), action)
+                    toAmmount: convertCurrency(parseFloat(ammount), getExchangeRate( $fromCurrencyRate, toCurrency.currencyCode), action)
                 }))
              
             }
             else if(action === 'to'){
                 currencyAmmounts.update((state) => ({
                     ...state,
-                    fromAmmount: convertCurrency(parseFloat(ammount), getExchangeRate(toCurrency.currencyCode), action),
+                    fromAmmount: convertCurrency(parseFloat(ammount), getExchangeRate( $fromCurrencyRate, toCurrency.currencyCode), action),
                     toAmmount: ammount
                 }))
             }
@@ -176,18 +166,6 @@
             toAmmount: '',
             fromAmmount: ''
         }));
-    };
-
-    // Get country code for flag src
-    const getCountryCode = (currencyCode) => {
-        const country = currencyFlags.find(currency => currency.code === currencyCode.toUpperCase());
-        return country ? country.countryCode.toLowerCase() : null;
-    }
-
-    //handle filter change
-    const handleInputChange = (e) => {
-        const { name, value } = e.target;
-        currencyFilter = value
     };
 
     //clear filter and input focus
@@ -244,7 +222,7 @@
                         <div class="currency__type__input flex align__center space__between p__relative max__w">
                             <!-- Flag and Currency Name  -->
                             <div class="currency flex align__center">
-                                {#if getCountryCode($currencyInputs.fromCurrency.currencyCode) && !unavailableFlags.includes($currencyInputs.fromCurrency.currencyCode.toUpperCase())}
+                                {#if getCountryCode($currencyInputs.fromCurrency.currencyCode) && !$initialState.unavailable_flags.includes($currencyInputs.fromCurrency.currencyCode.toUpperCase())}
                                     <img src={`https://flagcdn.com/w40/${getCountryCode($currencyInputs.fromCurrency.currencyCode)}.png`} alt="currency flag">
                                 {/if}
                                 <span>{$currencyInputs.fromCurrency.currencyCode}</span>
@@ -258,13 +236,20 @@
                                 onfocus={() => changeFocus('from')}
                                 onblur={() => changeFocus('')}
                                 value={$inputFocused === 'from' ? currencyFilter : $currencyInputs.fromCurrency.currencyName} 
-                                oninput={handleInputChange} 
+                                oninput={(e) => currencyFilter = e.target.value} 
                                 autocomplete={false}
                             />
                             <IconTablerArrowDown />
 
                             <!-- Countries List  -->
-                            <CountriesList currencyFilter={currencyFilter} countryCurrencies={$initialState.currencies} handleCurrencyChange={handleCurrencyChange} isFocused={isFocused} focusedInput={delayedInputFocus} listFor={'from'}/>
+                            <CountriesList 
+                                currencyFilter={currencyFilter} 
+                                countryCurrencies={$initialState.currencies} 
+                                handleCurrencyChange={handleCurrencyChange}
+                                isFocused={isFocused} 
+                                focusedInput={delayedInputFocus} 
+                                listFor={'from'} 
+                            />
                         </div>
 
                         <!-- Currency Ammount Input  -->
@@ -294,7 +279,7 @@
                         <div class="currency__type__input flex align__center space__between p__relative max__w">
                             <!-- Flag and Currency Name  -->
                             <div class="currency flex align__center">
-                                {#if getCountryCode($currencyInputs.toCurrency.currencyCode) && !unavailableFlags.includes($currencyInputs.toCurrency.currencyCode.toUpperCase())}
+                                {#if getCountryCode($currencyInputs.toCurrency.currencyCode) && !$initialState.unavailable_flags.includes($currencyInputs.toCurrency.currencyCode.toUpperCase())}
                                     <img src={`https://flagcdn.com/w40/${getCountryCode($currencyInputs.toCurrency.currencyCode)}.png`} alt="currency flag">
                                 {/if}
                                 <span>{$currencyInputs.toCurrency.currencyCode}</span>
@@ -308,13 +293,20 @@
                                 onfocus={() => changeFocus('to')}
                                 onblur={() => changeFocus('')}
                                 value={$inputFocused === 'to' ? currencyFilter : $currencyInputs.toCurrency.currencyName} 
-                                oninput={handleInputChange} 
+                                oninput={(e) => currencyFilter = e.target.value} 
                                 autocomplete={false}
                             />
                             <IconTablerArrowDown />
 
                             <!-- Countries List  -->
-                            <CountriesList currencyFilter={currencyFilter} countryCurrencies={$initialState.currencies} handleCurrencyChange={handleCurrencyChange} isFocused={isFocused} focusedInput={delayedInputFocus} listFor={'to'}/>
+                            <CountriesList 
+                                currencyFilter={currencyFilter} 
+                                countryCurrencies={$initialState.currencies} 
+                                handleCurrencyChange={handleCurrencyChange} 
+                                isFocused={isFocused} 
+                                focusedInput={delayedInputFocus} 
+                                listFor={'to'}
+                            />
                         </div>
 
                         <!-- Currency Ammount Input  -->
@@ -341,7 +333,13 @@
         </div>
 
         <!-- Charts  -->
-        <ExchangeRates exchangeRates={$fromCurrencyRate} fromCurrency={$currencyInputs.fromCurrency.currencyCode} toCurrency={$currencyInputs.toCurrency.currencyCode} exchangeDate={$exchangeDay} isLoading={$isLoading}/>
+        <ExchangeRates 
+            exchangeRates={$fromCurrencyRate} 
+            fromCurrency={$currencyInputs.fromCurrency.currencyCode} 
+            toCurrency={$currencyInputs.toCurrency.currencyCode} 
+            exchangeDate={$exchangeDay} 
+            isLoading={$isLoading}
+        />
     </div>
     
 </div>

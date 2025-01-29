@@ -5,9 +5,7 @@
     export let exchangeDate;
     export let isLoading;
     import IconTablerRight from '~icons/tabler/arrow-right-dashed';
-
-    // array of displayed currencies
-    const currencyArray = ['eur', 'jpy', 'krw', 'gbp', 'aud', 'cad', 'cny']
+    import { initialState } from '../stores/store';
 
     // Get date 
     const currentDate = new Date(exchangeDate);
@@ -39,7 +37,7 @@
             </li>
 
             <!-- Exchange rate of the array of currencies  -->
-            {#each currencyArray as currency}
+            {#each $initialState.currency_display as currency}
                 <li class="rate_item flex align__center space__between">
                     <div class="currencies flex align__center">
                         <span>{fromCurrency}</span>
