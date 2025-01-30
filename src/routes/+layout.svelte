@@ -12,5 +12,8 @@
     })
 </script>
 
+
 <!-- Content  -->
-<slot />
+<main>
+    <slot />
+</main>
