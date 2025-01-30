@@ -196,7 +196,7 @@
     }
 </script>
 
-<div class="homepage container flex flex__column">
+<section class="homepage container flex flex__column">
     <!-- Page Title -->
     <PageTitle title={'Currency Converter'} subtitle ={'Reliable Exchange Rates for Every Currency'}/>
     
@@ -342,4 +342,4 @@
         />
     </div>
     
-</div>
+</section>
